@@ -18,7 +18,19 @@ const commentUpdateSchema = commentCreateSchema.partial().refine(
 
 router.get("/", async (_req, res) => {
   const comments = await prisma.comment.findMany({
-    include: { post: true, user: true },
+    include: {
+      post: true,
+      user: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          email: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
   });
   res.json(comments);
 });
@@ -31,7 +43,19 @@ router.get("/:id", async (req, res) => {
 
   const comment = await prisma.comment.findUnique({
     where: { id },
-    include: { post: true, user: true },
+    include: {
+      post: true,
+      user: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          email: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
   });
 
   if (!comment) {

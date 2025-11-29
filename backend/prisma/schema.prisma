@@ -14,8 +14,10 @@ datasource db {
 
 model User {
   id        Int       @id @default(autoincrement())
+  username  String    @unique
   name      String
   email     String    @unique
+  password  String
   posts     Post[]
   comments  Comment[]
   createdAt DateTime  @default(now())
@@ -42,4 +44,25 @@ model Comment {
   user      User      @relation(fields: [userId], references: [id])
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+}
+
+enum PlanType {
+  MENSAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+model Student {
+  id         Int       @id @default(autoincrement())
+  name       String
+  cpf        String    @unique
+  phone      String
+  email      String
+  plan       PlanType
+  startDate  DateTime  @default(now())
+  endDate    DateTime
+  photo      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }

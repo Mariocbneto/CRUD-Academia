@@ -1,22 +1,34 @@
 import express from "express";
 import swaggerUi from "swagger-ui-express";
+import cors from "cors";
+import { authRouter } from "./routes/auth";
 import { commentRouter } from "./routes/comments";
 import { postRouter } from "./routes/posts";
 import { userRouter } from "./routes/users";
+import { studentRouter } from "./routes/students";
 import { errorHandler } from "./middlewares/errorHandler";
 import { swaggerSpec } from "./swagger";
 
 const app = express();
 
-app.use(express.json());
+const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+app.use(
+  cors({
+    origin: allowedOrigin,
+  }),
+);
+// aumenta limite para permitir base64 de fotos pequenas
+app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/posts", postRouter);
 app.use("/api/comments", commentRouter);
+app.use("/api/students", studentRouter);
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

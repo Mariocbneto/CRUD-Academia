@@ -18,7 +18,19 @@ const postUpdateSchema = postCreateSchema.partial().refine(
 
 router.get("/", async (_req, res) => {
   const posts = await prisma.post.findMany({
-    include: { user: true, comments: true },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          email: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+      comments: true,
+    },
   });
   res.json(posts);
 });
@@ -31,7 +43,19 @@ router.get("/:id", async (req, res) => {
 
   const post = await prisma.post.findUnique({
     where: { id },
-    include: { user: true, comments: true },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          email: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+      comments: true,
+    },
   });
 
   if (!post) {

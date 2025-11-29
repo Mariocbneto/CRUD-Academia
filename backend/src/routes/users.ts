@@ -6,8 +6,10 @@ import { validateBody } from "../middlewares/validate";
 const router = Router();
 
 const userCreateSchema = z.object({
+  username: z.string().min(1, "Username é obrigatório"),
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("E-mail inválido"),
+  password: z.string().min(4, "Senha precisa ter pelo menos 4 caracteres"),
 });
 
 const userUpdateSchema = userCreateSchema.partial().refine(
@@ -15,9 +17,22 @@ const userUpdateSchema = userCreateSchema.partial().refine(
   "Forneça ao menos um campo para atualizar",
 );
 
+const userSelect = {
+  id: true,
+  username: true,
+  name: true,
+  email: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 router.get("/", async (_req, res) => {
   const users = await prisma.user.findMany({
-    include: { posts: true, comments: true },
+    select: {
+      ...userSelect,
+      posts: true,
+      comments: true,
+    },
   });
   res.json(users);
 });
@@ -30,7 +45,11 @@ router.get("/:id", async (req, res) => {
 
   const user = await prisma.user.findUnique({
     where: { id },
-    include: { posts: true, comments: true },
+    select: {
+      ...userSelect,
+      posts: true,
+      comments: true,
+    },
   });
 
   if (!user) {
@@ -41,7 +60,10 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", validateBody(userCreateSchema), async (req, res) => {
-  const user = await prisma.user.create({ data: req.body });
+  const user = await prisma.user.create({
+    data: req.body,
+    select: userSelect,
+  });
   res.status(201).json(user);
 });
 
@@ -59,6 +81,7 @@ router.put("/:id", validateBody(userUpdateSchema), async (req, res) => {
   const updated = await prisma.user.update({
     where: { id },
     data: req.body,
+    select: userSelect,
   });
 
   res.json(updated);
