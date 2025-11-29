@@ -1,6 +1,14 @@
-node_modules
-# Keep environment variables out of version control
-.env
-
-/src/generated/prisma
+# Raiz
 dist
+*.log
+
+# Backend
+backend/node_modules
+backend/dist
+backend/.env
+backend/src/generated/prisma
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/.env
