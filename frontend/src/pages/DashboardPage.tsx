@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { StudentForm } from "../components/StudentForm";
+import { TeacherForm } from "../components/TeacherForm";
 import { getComments } from "../services/comments";
 import { getPosts } from "../services/posts";
-import { getStudents } from "../services/students";
+import { getStudents, deleteStudent } from "../services/students";
+import { getTeachers, deleteTeacher } from "../services/teachers";
 import { getUsers } from "../services/users";
 import type { Student } from "../types/student";
-import { deleteStudent } from "../services/students";
+import type { Teacher } from "../types/teacher";
 
 type Counts = {
   alunos: number;
@@ -26,12 +28,73 @@ export function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(true);
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [section, setSection] = useState<"dashboard" | "students" | "config">(
-    "dashboard",
-  );
+  const [section, setSection] = useState<
+    "dashboard" | "students" | "teachers" | "classes" | "config"
+  >("dashboard");
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Student | null>(null);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [assignments, setAssignments] = useState<Record<string, number | null>>({});
+
+  const today = useMemo(() => new Date(), []);
+  const todayDay = today.getDay(); // 0 domingo ... 6 sábado
+
+  const classTypeLabel: Record<Teacher["classType"], string> = {
+    MUSCULACAO: "Musculação",
+    PILATES: "Pilates",
+    FUNCIONAL: "Funcional",
+    CROSS_TRAINING: "Cross Training",
+    YOGA: "Yoga",
+    ZUMBA_DANCA: "Zumba / Dança",
+    HIIT: "HIIT",
+    SPINNING: "Spinning / Ciclismo Indoor",
+    ALONGAMENTO: "Alongamento",
+    FISIOTERAPIA_REABILITACAO: "Fisioterapia / Reabilitação",
+  };
+
+  const daySlots: Record<number, { classType: Teacher["classType"]; start: string; end: string }[]> =
+    {
+      0: [
+        { classType: "YOGA", start: "09:00", end: "10:00" },
+        { classType: "ALONGAMENTO", start: "14:00", end: "15:00" },
+        { classType: "PILATES", start: "17:00", end: "18:00" },
+      ],
+      1: [
+        { classType: "MUSCULACAO", start: "08:00", end: "09:00" },
+        { classType: "FUNCIONAL", start: "14:00", end: "15:00" },
+        { classType: "SPINNING", start: "18:00", end: "19:00" },
+      ],
+      2: [
+        { classType: "PILATES", start: "09:00", end: "10:00" },
+        { classType: "CROSS_TRAINING", start: "16:00", end: "17:00" },
+        { classType: "ZUMBA_DANCA", start: "19:00", end: "20:00" },
+      ],
+      3: [
+        { classType: "FUNCIONAL", start: "07:30", end: "08:30" },
+        { classType: "HIIT", start: "12:00", end: "12:40" },
+        { classType: "ALONGAMENTO", start: "18:30", end: "19:30" },
+      ],
+      4: [
+        { classType: "YOGA", start: "07:00", end: "08:00" },
+        { classType: "PILATES", start: "13:00", end: "14:00" },
+        { classType: "SPINNING", start: "19:00", end: "20:00" },
+      ],
+      5: [
+        { classType: "MUSCULACAO", start: "08:00", end: "09:00" },
+        { classType: "CROSS_TRAINING", start: "17:00", end: "18:00" },
+        { classType: "ZUMBA_DANCA", start: "19:00", end: "20:00" },
+      ],
+      6: [
+        { classType: "YOGA", start: "10:00", end: "11:00" },
+        { classType: "PILATES", start: "14:00", end: "15:00" },
+        { classType: "MUSCULACAO", start: "17:00", end: "19:00" },
+      ],
+    };
+
+  const todaySlots = daySlots[todayDay] ?? [];
 
   useEffect(() => {
     document.body.classList.toggle("dark", darkMode);
@@ -39,15 +102,26 @@ export function DashboardPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([getUsers(), getPosts(), getComments(), getStudents()])
-      .then(([_, posts, comments, studentsData]) => {
+    Promise.all([getUsers(), getPosts(), getComments(), getStudents(), getTeachers()])
+      .then(([_, _posts, comments, studentsData, teachersData]) => {
         setCounts({
           alunos: studentsData.length,
-          professores: 0, // placeholder até termos dados de professores
-          aulas: posts.length,
+          professores: teachersData.length,
+          aulas: 0,
           financeiro: comments.length,
         });
         setStudents(studentsData);
+        setTeachers(teachersData);
+        const initial: Record<string, number | null> = {};
+        todaySlots.forEach((slot, idx) => {
+          const key = `${todayDay}-${idx}`;
+          const options = teachersData.filter((t) => t.classType === slot.classType);
+          const choice = options.length
+            ? options[Math.floor(Math.random() * options.length)].id
+            : null;
+          initial[key] = choice;
+        });
+        setAssignments(initial);
       })
       .catch((err) => {
         console.error(err);
@@ -55,6 +129,29 @@ export function DashboardPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    // sempre que os professores ou os slots do dia mudarem, tenta preencher os vazios
+    setAssignments((prev) => {
+      const next = { ...prev };
+      todaySlots.forEach((slot, idx) => {
+        const key = `${todayDay}-${idx}`;
+        if (next[key] === undefined || next[key] === null) {
+          const options = teachers.filter((t) => t.classType === slot.classType);
+          const choice = options.length
+            ? options[Math.floor(Math.random() * options.length)].id
+            : null;
+          next[key] = choice;
+        }
+      });
+      return next;
+    });
+  }, [teachers, todaySlots, todayDay]);
+
+  useEffect(() => {
+    const assignedCount = Object.values(assignments).filter((v) => v !== null).length;
+    setCounts((prev) => ({ ...prev, aulas: assignedCount }));
+  }, [assignments]);
 
   const cards = useMemo(
     () => [
@@ -162,8 +259,18 @@ export function DashboardPage() {
             >
               Alunos
             </button>
-            <button className="nav-item">Professores</button>
-            <button className="nav-item">Aulas</button>
+            <button
+              className={`nav-item ${section === "teachers" ? "active" : ""}`}
+              onClick={() => setSection("teachers")}
+            >
+              Professores
+            </button>
+            <button
+              className={`nav-item ${section === "classes" ? "active" : ""}`}
+              onClick={() => setSection("classes")}
+            >
+              Aulas
+            </button>
             <button
               className={`nav-item ${section === "config" ? "active" : ""}`}
               onClick={() => setSection("config")}
@@ -213,7 +320,7 @@ export function DashboardPage() {
                   .filter((s) =>
                     s.name.toLowerCase().includes(search.toLowerCase()),
                   )
-                    .map((s) => (
+                  .map((s) => (
                     <div key={s.id} className="hint-row">
                       <div className="hint-avatar">
                         {s.photo ? (
@@ -280,6 +387,148 @@ export function DashboardPage() {
               }}
             />
           </div>
+        ) : section === "teachers" ? (
+          <div className="students-main">
+            <header className="hub-header">
+              <h1>Professores</h1>
+              {loading && <span className="pill">Carregando...</span>}
+            </header>
+
+            <div className="search-bar card">
+              <input
+                type="text"
+                placeholder="Buscar professor pelo nome"
+                value={teacherSearch}
+                onChange={(e) => setTeacherSearch(e.target.value)}
+              />
+              <div className="search-hints">
+                {teachers
+                  .filter((t) =>
+                    t.name.toLowerCase().includes(teacherSearch.toLowerCase()),
+                  )
+                  .map((t) => (
+                    <div key={t.id} className="hint-row">
+                      <div className="hint-avatar">
+                        {t.photo ? (
+                          <img src={t.photo} alt={t.name} />
+                        ) : (
+                          <span className="avatar-fallback">{t.name[0]}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="label-strong">{t.name}</div>
+                        <div className="label-muted">{t.classType}</div>
+                      </div>
+                      <div className="hint-actions">
+                        <button
+                          className="icon-button"
+                          title="Editar"
+                          onClick={() => setEditingTeacher(t)}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="icon-button danger"
+                          title="Excluir"
+                          onClick={async () => {
+                            const ok = window.confirm(
+                              `Você realmente quer deletar o professor ${t.name}?`,
+                            );
+                            if (!ok) return;
+                            await deleteTeacher(t.id);
+                            setTeachers((prev) =>
+                              prev.filter((prof) => prof.id !== t.id),
+                            );
+                            setCounts((prev) => ({
+                              ...prev,
+                              professores: Math.max(prev.professores - 1, 0),
+                            }));
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <TeacherForm
+              teacher={editingTeacher}
+              onCreated={(teacher) => {
+                setTeachers((prev) =>
+                  [...prev, teacher].sort((a, b) =>
+                    a.name.localeCompare(b.name),
+                  ),
+                );
+                setCounts((prev) => ({
+                  ...prev,
+                  professores: prev.professores + 1,
+                }));
+              }}
+              onUpdated={(teacher) => {
+                setTeachers((prev) =>
+                  prev
+                    .map((p) => (p.id === teacher.id ? teacher : p))
+                    .sort((a, b) => a.name.localeCompare(b.name)),
+                );
+                setEditingTeacher(null);
+              }}
+            />
+          </div>
+        ) : section === "classes" ? (
+          <div className="students-main">
+            <header className="hub-header">
+              <h1>Aulas de hoje</h1>
+              <span className="pill">
+                {today.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })}
+              </span>
+            </header>
+            <div className="cards-grid">
+              {todaySlots.map((slot, idx) => {
+                const key = `${todayDay}-${idx}`;
+                const assignedId = assignments[key] ?? null;
+                const assigned = teachers.find((t) => t.id === assignedId);
+                const options = teachers.filter((t) => t.classType === slot.classType);
+                return (
+                  <div key={key} className="card stats-card">
+                    <div className="icon">
+                      <span role="img" aria-label="Aula">
+                        🧘
+                      </span>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="stat-value">{classTypeLabel[slot.classType]}</div>
+                      <div className="stat-label">
+                        {slot.start} - {slot.end}
+                      </div>
+                      <div className="label-strong" style={{ marginTop: "0.35rem" }}>
+                        {assigned ? `Professor: ${assigned.name}` : "Professor: não definido"}
+                      </div>
+                    </div>
+                    <select
+                      className="class-select"
+                      value={assignedId ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAssignments((prev) => ({
+                          ...prev,
+                          [key]: val ? Number(val) : null,
+                        }));
+                      }}
+                    >
+                      <option value="">Selecionar professor</option>
+                      {options.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
           <div className="config-main card">
             <div className="config-header">
@@ -305,3 +554,4 @@ export function DashboardPage() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, Link, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "./App.css";
 import { LoginPage } from "./pages/LoginPage";

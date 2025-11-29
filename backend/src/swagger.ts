@@ -20,6 +20,7 @@ const swaggerDefinition = {
     { name: "Posts" },
     { name: "Comentários" },
     { name: "Alunos" },
+    { name: "Professores" },
   ],
   components: {
     schemas: {
@@ -99,6 +100,60 @@ const swaggerDefinition = {
           photo: { type: "string" },
         },
       },
+      Teacher: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          cpf: { type: "string" },
+          phone: { type: "string" },
+          email: { type: "string" },
+          classType: {
+            type: "string",
+            enum: [
+              "MUSCULACAO",
+              "PILATES",
+              "FUNCIONAL",
+              "CROSS_TRAINING",
+              "YOGA",
+              "ZUMBA_DANCA",
+              "HIIT",
+              "SPINNING",
+              "ALONGAMENTO",
+              "FISIOTERAPIA_REABILITACAO",
+            ],
+          },
+          photo: { type: "string", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      TeacherCreateInput: {
+        type: "object",
+        required: ["name", "cpf", "phone", "email", "classType"],
+        properties: {
+          name: { type: "string" },
+          cpf: { type: "string" },
+          phone: { type: "string" },
+          email: { type: "string" },
+          classType: {
+            type: "string",
+            enum: [
+              "MUSCULACAO",
+              "PILATES",
+              "FUNCIONAL",
+              "CROSS_TRAINING",
+              "YOGA",
+              "ZUMBA_DANCA",
+              "HIIT",
+              "SPINNING",
+              "ALONGAMENTO",
+              "FISIOTERAPIA_REABILITACAO",
+            ],
+          },
+          photo: { type: "string" },
+        },
+      },
     },
   },
   paths: {
@@ -174,6 +229,61 @@ const swaggerDefinition = {
       delete: {
         tags: ["Alunos"],
         summary: "Remove aluno",
+        responses: { 204: { description: "Removido" }, 404: { description: "Não encontrado" } },
+      },
+    },
+    "/api/teachers": {
+      get: {
+        tags: ["Professores"],
+        summary: "Lista professores (filtro ?q=)",
+        responses: {
+          200: {
+            description: "Lista",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/Teacher" } },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ["Professores"],
+        summary: "Cria professor",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/TeacherCreateInput" },
+            },
+          },
+        },
+        responses: { 201: { description: "Professor criado" } },
+      },
+    },
+    "/api/teachers/{id}": {
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+      get: {
+        tags: ["Professores"],
+        summary: "Busca professor",
+        responses: { 200: { description: "Professor encontrado" }, 404: { description: "Não encontrado" } },
+      },
+      put: {
+        tags: ["Professores"],
+        summary: "Atualiza professor",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/TeacherCreateInput" },
+            },
+          },
+        },
+        responses: { 200: { description: "Professor atualizado" }, 404: { description: "Não encontrado" } },
+      },
+      delete: {
+        tags: ["Professores"],
+        summary: "Remove professor",
         responses: { 204: { description: "Removido" }, 404: { description: "Não encontrado" } },
       },
     },

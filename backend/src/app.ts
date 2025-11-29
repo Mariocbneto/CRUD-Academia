@@ -6,6 +6,7 @@ import { commentRouter } from "./routes/comments";
 import { postRouter } from "./routes/posts";
 import { userRouter } from "./routes/users";
 import { studentRouter } from "./routes/students";
+import { teacherRouter } from "./routes/teachers";
 import { errorHandler } from "./middlewares/errorHandler";
 import { swaggerSpec } from "./swagger";
 
@@ -29,6 +30,7 @@ app.use("/api/users", userRouter);
 app.use("/api/posts", postRouter);
 app.use("/api/comments", commentRouter);
 app.use("/api/students", studentRouter);
+app.use("/api/teachers", teacherRouter);
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

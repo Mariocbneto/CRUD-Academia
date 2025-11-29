@@ -315,6 +315,12 @@ section h1 {
   color: #b91c1c;
 }
 
+.class-select {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.45rem;
+}
+
 .student-form {
   display: grid;
   gap: 1rem;

@@ -66,3 +66,28 @@ model Student {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 }
+
+enum ClassType {
+  MUSCULACAO
+  PILATES
+  FUNCIONAL
+  CROSS_TRAINING
+  YOGA
+  ZUMBA_DANCA
+  HIIT
+  SPINNING
+  ALONGAMENTO
+  FISIOTERAPIA_REABILITACAO
+}
+
+model Teacher {
+  id         Int       @id @default(autoincrement())
+  name       String
+  cpf        String    @unique
+  phone      String
+  email      String
+  classType  ClassType
+  photo      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
