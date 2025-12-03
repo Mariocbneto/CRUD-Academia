@@ -14,7 +14,7 @@ import { classRouter } from "./routes/classes";
 
 const app = express();
 
-const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+const allowedOrigin = process.env.CORS_ORIGIN || "*";
 app.use(
   cors({
     origin: allowedOrigin,
