@@ -9,6 +9,8 @@ import { studentRouter } from "./routes/students";
 import { teacherRouter } from "./routes/teachers";
 import { errorHandler } from "./middlewares/errorHandler";
 import { swaggerSpec } from "./swagger";
+import { financialRouter } from "./routes/financial"; 
+import { classRouter } from "./routes/classes";
 
 const app = express();
 
@@ -31,6 +33,8 @@ app.use("/api/posts", postRouter);
 app.use("/api/comments", commentRouter);
 app.use("/api/students", studentRouter);
 app.use("/api/teachers", teacherRouter);
+app.use("/api/financial", financialRouter);
+app.use("/api/classes", classRouter);
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

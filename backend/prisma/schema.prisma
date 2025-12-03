@@ -54,17 +54,18 @@ enum PlanType {
 }
 
 model Student {
-  id         Int       @id @default(autoincrement())
-  name       String
-  cpf        String    @unique
-  phone      String
-  email      String
-  plan       PlanType
-  startDate  DateTime  @default(now())
-  endDate    DateTime
-  photo      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id        Int               @id @default(autoincrement())
+  name      String
+  cpf       String            @unique
+  phone     String
+  email     String
+  plan      PlanType
+  startDate DateTime          @default(now())
+  endDate   DateTime
+  photo     String?
+  payments  FinancialRecord[] // <--- ADICIONE ISSO
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 }
 
 enum ClassType {
@@ -81,13 +82,46 @@ enum ClassType {
 }
 
 model Teacher {
-  id         Int       @id @default(autoincrement())
-  name       String
-  cpf        String    @unique
-  phone      String
-  email      String
-  classType  ClassType
-  photo      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id        Int               @id @default(autoincrement())
+  name      String
+  cpf       String            @unique
+  phone     String
+  email     String
+  classType ClassType
+  classes   GymClass[]        // <--- ADICIONE ISSO
+  payments  FinancialRecord[] // <--- ADICIONE ISSO
+  photo     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model GymClass {
+  id          Int       @id @default(autoincrement())
+  name        String    // Ex: "Yoga Manhã"
+  dayOfWeek   Int       // 0=Domingo, 1=Segunda... 
+  timeStart   String    // "08:00"
+  timeEnd     String    // "09:00"
+  teacherId   Int
+  teacher     Teacher   @relation(fields: [teacherId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model FinancialRecord {
+  id          Int             @id @default(autoincrement())
+  type        TransactionType
+  amount      Float           // Use Decimal em produção, mas Float serve aqui
+  description String
+  date        DateTime        @default(now())
+  studentId   Int?
+  student     Student?        @relation(fields: [studentId], references: [id])
+  teacherId   Int?
+  teacher     Teacher?        @relation(fields: [teacherId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 }
