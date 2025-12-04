@@ -39,10 +39,10 @@ function App() {
     <div className="layout">
       {isAuthenticated && (
         <header className="topbar">
-          <div className="brand">CRUD Academia</div>
+          <div className="brand">Mario Academia</div>
           <div className="user-box">
             <span>{auth?.userName ?? "Usuário"}</span>
-            <button className="ghost" onClick={handleLogout}>
+            <button className="ghostGHead" onClick={handleLogout}>
               Sair
             </button>
           </div>

@@ -138,7 +138,14 @@ section h1 {
 .ghost {
   background: transparent;
   border: 1px solid #4b5563;
-  color: rgb(249, 251, 255);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ghostGHead {
+  background: transparent;
+  border: 1px solid #4b5563;
+  color: #e5e7eb;
   padding: 0.35rem 0.75rem;
   border-radius: 6px;
   cursor: pointer;
@@ -715,3 +722,128 @@ body.dark {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #4b5563;
 }
+
+
+
+
+/* --- AGENDA SEMANAL (CALENDÁRIO) --- */
+
+.agenda-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+/* O GRID MÁGICO: 7 Colunas iguais */
+.agenda-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr); 
+  gap: 0.75rem;
+  overflow-x: auto; /* Rolagem no celular */
+  padding-bottom: 1rem;
+}
+
+.agenda-day {
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+}
+
+/* Cabeçalho do dia (ex: SEG 01) */
+.agenda-day-header {
+  padding: 0.75rem;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  border-radius: 10px 10px 0 0;
+}
+
+.day-name {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  letter-spacing: 1px;
+}
+
+.day-number {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1f2933;
+  line-height: 1.2;
+}
+
+.day-body {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1; /* Ocupa o resto da altura */
+  background-color: #fff;
+  border-radius: 0 0 10px 10px;
+}
+
+/* Card da Aula dentro do dia */
+.class-mini-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #3b82f6; /* Azul destaque */
+  border-radius: 6px;
+  padding: 0.6rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.class-mini-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-color: #bfdbfe;
+}
+
+.mini-time {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+  display: block;
+}
+
+.mini-title {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  margin-bottom: 0.2rem;
+  display: block;
+}
+
+.mini-prof {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agenda-day[style*="border"] {
+  background-color: #eff6ff; 
+}
+.dark .agenda-controls { background-color: #1e293b; border-color: #334155; }
+.dark .agenda-day { background-color: #1f2937; border-color: #374151; }
+.dark .agenda-day-header { background-color: #111827; border-color: #374151; }
+.dark .day-body { background-color: #1f2937; }
+.dark .day-number { color: #f3f4f6; }
+.dark .class-mini-card { background-color: #374151; border-color: #4b5563; color: #f3f4f6; }
+.dark .mini-title { color: #f3f4f6; }
+.dark .mini-time, .dark .mini-prof { color: #94a3b8; }

@@ -60,8 +60,22 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", validateBody(teacherSchema), async (req, res) => {
-  const created = await prisma.teacher.create({ data: req.body });
-  res.status(201).json(created);
+  try {
+    const created = await prisma.teacher.create({
+      data: req.body,
+    });
+    res.status(201).json(created);
+  } catch (error: any) {
+    // Se o erro for de campo único duplicado (CPF ou Email)
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        message: "Já existe um professor cadastrado com este CPF." 
+      });
+    }
+    // Outros erros
+    console.error(error);
+    res.status(500).json({ message: "Erro ao cadastrar professor." });
+  }
 });
 
 router.put("/:id", validateBody(teacherUpdateSchema), async (req, res) => {

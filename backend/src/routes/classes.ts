@@ -88,7 +88,6 @@ router.post("/generate", async (req, res) => {
   }
 });
 
-// 3. Rota de DELETAR (DELETE /api/classes/:id)
 router.delete("/:id", async (req, res) => {
   const id = Number(req.params.id);
   await prisma.gymClass.delete({ where: { id } });
