@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { StudentForm } from "../components/StudentForm";
 import { TeacherForm } from "../components/TeacherForm";
-import { Modal } from "../components/Modal"; 
+import { Modal } from "../components/Modal";
+import { FinancialChart } from "../components/FinancialChart";
+
 import { getStudents, deleteStudent } from "../services/students";
 import { getTeachers, deleteTeacher } from "../services/teachers";
 import { getFinancialRecords, createFinancialRecord } from "../services/financial";
-import { getClasses, createClass, deleteClass } from "../services/classes";
-import { FinancialChart } from "../components/FinancialChart";
+import { getClasses, generateClasses, deleteClass } from "../services/classes";
 
 import type { Student } from "../types/student";
 import type { Teacher } from "../types/teacher";
@@ -32,42 +33,49 @@ export function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(true);
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [section, setSection] = useState<
-    "dashboard" | "students" | "teachers" | "classes" | "financial" | "config"
-  >("dashboard");
+  const [section, setSection] = useState<"dashboard" | "students" | "teachers" | "classes" | "financial" | "config">("dashboard");
 
-  // Dados Principais
+  // Dados
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
   const [gymClasses, setGymClasses] = useState<GymClass[]>([]);
 
-  // Filtros
+  // Filtros/Edição
   const [search, setSearch] = useState("");
   const [teacherSearch, setTeacherSearch] = useState("");
   const [editing, setEditing] = useState<Student | null>(null);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
-  const [isClassModalOpen, setClassModalOpen] = useState(false);
-  const [newClassData, setNewClassData] = useState({ name: "", timeStart: "08:00", timeEnd: "09:00", teacherId: "" });
 
+  // --- ESTADOS DO MODAL DE AGENDA ---
+  const [isClassModalOpen, setClassModalOpen] = useState(false);
+  const [agendaForm, setAgendaForm] = useState({
+    name: "",
+    teacherId: "",
+    timeStart: "08:00",
+    timeEnd: "09:00",
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+    weekDays: [] as number[]
+  });
+
+  // --- ESTADOS DO MODAL FINANCEIRO ---
   const [isFinanceModalOpen, setFinanceModalOpen] = useState(false);
   const [newFinanceData, setNewFinanceData] = useState({ description: "", amount: "", type: "INCOME" as "INCOME" | "EXPENSE" });
 
   const today = useMemo(() => new Date(), []);
-  const todayDay = today.getDay(); 
-
+  
   useEffect(() => {
     document.body.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
   useEffect(() => {
+    loadData();
+  }, []);
+
+  function loadData() {
     setLoading(true);
-    Promise.all([
-      getStudents(), 
-      getTeachers(), 
-      getFinancialRecords(), 
-      getClasses()
-    ])
+    Promise.all([getStudents(), getTeachers(), getFinancialRecords(), getClasses()])
       .then(([studentsData, teachersData, financesData, classesData]) => {
         setStudents(studentsData);
         setTeachers(teachersData);
@@ -82,72 +90,87 @@ export function DashboardPage() {
         setCounts({
           alunos: studentsData.length,
           professores: teachersData.length,
-          aulas: classesData.length,
+          aulas: classesData.length, // Total de aulas cadastradas no mês
           financeiro: balance,
         });
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  }, []);
+  }
 
+  // --- HANDLERS ---
 
-  async function handleCreateClass(e: React.FormEvent) {
+  function toggleWeekDay(day: number) {
+    setAgendaForm(prev => {
+      const exists = prev.weekDays.includes(day);
+      if (exists) return { ...prev, weekDays: prev.weekDays.filter(d => d !== day) };
+      return { ...prev, weekDays: [...prev.weekDays, day] };
+    });
+  }
+
+  async function handleGenerateAgenda(e: React.FormEvent) {
     e.preventDefault();
-    if (!newClassData.teacherId) return alert("Selecione um professor");
-    
+    if (agendaForm.weekDays.length === 0) return alert("Selecione pelo menos um dia da semana.");
+    if (!agendaForm.teacherId) return alert("Selecione um professor.");
+
     try {
-      const created = await createClass({
-        name: newClassData.name,
-        dayOfWeek: todayDay, // Cria para hoje
-        timeStart: newClassData.timeStart,
-        timeEnd: newClassData.timeEnd,
-        teacherId: Number(newClassData.teacherId)
+      setLoading(true);
+      await generateClasses({
+        ...agendaForm,
+        teacherId: Number(agendaForm.teacherId)
       });
-      // Atualiza lista localmente e fecha modal
-      const teacher = teachers.find(t => t.id === created.teacherId);
-      const classWithTeacher = { ...created, teacher }; // Acopla o objeto teacher para exibir o nome
-      
-      setGymClasses(prev => [...prev, classWithTeacher]);
-      setCounts(prev => ({ ...prev, aulas: prev.aulas + 1 }));
+      alert("Agenda gerada com sucesso!");
       setClassModalOpen(false);
-      setNewClassData({ name: "", timeStart: "08:00", timeEnd: "09:00", teacherId: "" });
+      loadData(); // Recarrega para mostrar as novas aulas
     } catch (error) {
-      alert("Erro ao criar aula");
+      alert("Erro ao gerar agenda.");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleCreateFinance(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const created = await createFinancialRecord({
+      await createFinancialRecord({
         description: newFinanceData.description,
         amount: Number(newFinanceData.amount.replace(",", ".")),
         type: newFinanceData.type
       });
-      
-      setFinancialRecords(prev => [created, ...prev]);
-      const amountNum = Number(created.amount);
-      setCounts(prev => ({
-        ...prev, 
-        financeiro: created.type === 'INCOME' ? prev.financeiro + amountNum : prev.financeiro - amountNum
-      }));
       setFinanceModalOpen(false);
       setNewFinanceData({ description: "", amount: "", type: "INCOME" });
+      loadData();
     } catch (error) {
-      alert("Erro ao salvar transação");
+      alert("Erro ao salvar.");
     }
   }
 
+  // Filtra aulas de HOJE para exibir no card
+  const todaysClasses = gymClasses.filter(c => {
+    // 1. Proteção: Se a aula não tiver data definida, ignora
+    if (!c.date) return false;
+
+    // 2. Converte para objeto Date
+    const dateObj = new Date(c.date);
+
+    // 3. Proteção: Verifica se a data é válida (evita o RangeError)
+    if (isNaN(dateObj.getTime())) return false;
+
+    // 4. Agora é seguro chamar toISOString
+    const classDate = dateObj.toISOString().split('T')[0];
+    const todayDate = today.toISOString().split('T')[0];
+    
+    return classDate === todayDate;
+  });
   const cards = useMemo(() => [
     { title: "Alunos", value: counts.alunos, icon: "👥", color: "#f59e0b" },
     { title: "Professores", value: counts.professores, icon: "🎓", color: "#2563eb" },
-    { title: "Aulas Hoje", value: counts.aulas, icon: "🧘", color: "#22c55e" },
+    { title: "Aulas Hoje", value: todaysClasses.length, icon: "🧘", color: "#22c55e" }, // Mostra aulas de HOJE
     { title: "Saldo Caixa", value: `R$ ${counts.financeiro.toFixed(2)}`, icon: "💲", color: "#10b981" },
-  ], [counts]);
+  ], [counts, todaysClasses]);
 
   return (
     <div className="hub">
-      {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="sidebar-header" onClick={() => setMenuOpen((v) => !v)}>
           <div className="sidebar-user">
@@ -170,9 +193,7 @@ export function DashboardPage() {
         )}
       </aside>
 
-      {/* MAIN CONTENT */}
       <section className="hub-main">
-        
         {/* DASHBOARD */}
         {section === "dashboard" && (
           <>
@@ -180,8 +201,6 @@ export function DashboardPage() {
               <h1>Dashboard</h1>
               {loading && <span className="pill">Carregando...</span>}
             </header>
-            
-            {/* CARDS DE ESTATÍSTICAS */}
             <div className="cards-grid">
               {cards.map((card) => (
                 <div key={card.title} className="card stats-card">
@@ -216,16 +235,13 @@ export function DashboardPage() {
                     </div>
                     <div className="hint-actions">
                       <button className="icon-button" onClick={() => setEditing(s)}>✏️</button>
-                      <button className="icon-button danger" onClick={() => { if(confirm("Deletar?")) { deleteStudent(s.id).then(() => { setStudents(p => p.filter(x => x.id !== s.id)); setCounts(p => ({...p, alunos: p.alunos - 1})); }) }}}>🗑️</button>
+                      <button className="icon-button danger" onClick={() => { if(confirm("Deletar?")) { deleteStudent(s.id).then(() => { loadData(); }) }}}>🗑️</button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <StudentForm student={editing} 
-              onCreated={(st) => { setStudents(p => [...p, st]); setCounts(p => ({...p, alunos: p.alunos + 1})); }} 
-              onUpdated={(st) => { setStudents(p => p.map(x => x.id === st.id ? st : x)); setEditing(null); }} 
-            />
+            <StudentForm student={editing} onCreated={() => loadData()} onUpdated={() => { loadData(); setEditing(null); }} />
           </div>
         )}
 
@@ -247,128 +263,137 @@ export function DashboardPage() {
                       </div>
                       <div className="hint-actions">
                         <button className="icon-button" onClick={() => setEditingTeacher(t)}>✏️</button>
-                        <button className="icon-button danger" onClick={() => { if(confirm("Deletar?")) { deleteTeacher(t.id).then(() => { setTeachers(p => p.filter(x => x.id !== t.id)); setCounts(p => ({...p, professores: p.professores - 1})); }) }}}>🗑️</button>
+                        <button className="icon-button danger" onClick={() => { if(confirm("Deletar?")) { deleteTeacher(t.id).then(() => loadData()) }}}>🗑️</button>
                       </div>
                     </div>
                   ))}
               </div>
             </div>
-            <TeacherForm teacher={editingTeacher} 
-               onCreated={(t) => { setTeachers(p => [...p, t]); setCounts(p => ({...p, professores: p.professores + 1})); }} 
-               onUpdated={(t) => { setTeachers(p => p.map(x => x.id === t.id ? t : x)); setEditingTeacher(null); }} 
-            />
+            <TeacherForm teacher={editingTeacher} onCreated={() => loadData()} onUpdated={() => { loadData(); setEditingTeacher(null); }} />
           </div>
         )}
 
-        {/* AULAS (COM MODAL) */}
+        {/* AULAS (AGENDA) */}
         {section === "classes" && (
           <div className="students-main">
             <header className="hub-header">
-              <h1>Aulas do Dia</h1>
-              <span className="pill">{today.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit" })}</span>
-              <button className="ghost" onClick={() => setClassModalOpen(true)}>+ Nova Aula</button>
+              <h1>Aulas (Agenda)</h1>
+              <button className="ghost" onClick={() => setClassModalOpen(true)}>+ Gerar Agenda</button>
             </header>
 
             <div className="cards-grid">
-               {gymClasses.filter(c => c.dayOfWeek === todayDay).length === 0 && <p>Nenhuma aula hoje.</p>}
-               {gymClasses.filter(c => c.dayOfWeek === todayDay).map(aula => (
+               {todaysClasses.length === 0 && <p style={{gridColumn: '1/-1', textAlign:'center', color:'#888'}}>Nenhuma aula agendada para hoje ({today.toLocaleDateString()}).</p>}
+               {todaysClasses.map(aula => (
                    <div key={aula.id} className="card stats-card">
                      <div className="icon">🧘</div>
                      <div style={{flex: 1}}>
                        <div className="stat-value">{aula.name}</div>
                        <div className="stat-label">{aula.timeStart} - {aula.timeEnd}</div>
-                       <div className="label-strong" style={{fontSize: '0.9rem', color: '#6b7280'}}>Prof: {aula.teacher?.name || '---'}</div>
+                       <div className="label-strong" style={{fontSize: '0.9rem', color: '#6b7280'}}>
+                         {aula.teacher?.name}
+                       </div>
                      </div>
-                     <button className="icon-button danger" onClick={() => { if(confirm("Cancelar aula?")) { deleteClass(aula.id).then(() => { setGymClasses(p => p.filter(c => c.id !== aula.id)); setCounts(p => ({...p, aulas: p.aulas - 1})); }) }}}>X</button>
+                     <button className="icon-button danger" onClick={() => { if(confirm("Cancelar esta aula?")) { deleteClass(aula.id).then(() => loadData()) }}}>X</button>
                    </div>
                ))}
             </div>
 
-            {/* MODAL CRIAR AULA */}
-            <Modal isOpen={isClassModalOpen} onClose={() => setClassModalOpen(false)} title="Agendar Aula (Hoje)">
-              <form onSubmit={handleCreateClass} className="form-grid" style={{gridTemplateColumns: '1fr'}}>
-                 <label>Nome da Aula
-                    <input required value={newClassData.name} onChange={e => setNewClassData({...newClassData, name: e.target.value})} placeholder="Ex: Pilates Avançado" />
-                 </label>
-                 <div style={{display:'flex', gap: '10px'}}>
-                   <label style={{flex:1}}>Início
-                      <input type="time" required value={newClassData.timeStart} onChange={e => setNewClassData({...newClassData, timeStart: e.target.value})} />
-                   </label>
-                   <label style={{flex:1}}>Fim
-                      <input type="time" required value={newClassData.timeEnd} onChange={e => setNewClassData({...newClassData, timeEnd: e.target.value})} />
-                   </label>
-                 </div>
-                 <label>Professor
-                    <select required value={newClassData.teacherId} onChange={e => setNewClassData({...newClassData, teacherId: e.target.value})}>
-                        <option value="">Selecione...</option>
-                        {teachers.map(t => <option key={t.id} value={t.id}>{t.name} - {t.classType}</option>)}
+            {/* MODAL GERAR AGENDA */}
+            <Modal isOpen={isClassModalOpen} onClose={() => setClassModalOpen(false)} title="Gerar Agenda de Aulas">
+              <form onSubmit={handleGenerateAgenda} className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+                  <label>Nome da Atividade
+                    <input required placeholder="Ex: Musculação Manhã" value={agendaForm.name} onChange={e => setAgendaForm({...agendaForm, name: e.target.value})} />
+                  </label>
+                  <label>Professor
+                    <select required value={agendaForm.teacherId} onChange={e => setAgendaForm({...agendaForm, teacherId: e.target.value})}>
+                      <option value="">Selecione...</option>
+                      {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.classType})</option>)}
                     </select>
-                 </label>
-                 <div className="modal-actions">
-                   <button type="button" className="ghost" onClick={() => setClassModalOpen(false)}>Cancelar</button>
-                   <button type="submit" style={{background: '#2563eb', color:'white', padding:'0.5rem 1rem', borderRadius:'6px', border:'none', cursor:'pointer'}}>Salvar</button>
-                 </div>
+                  </label>
+                </div>
+
+                <label>Dias da Semana (Repetir)</label>
+                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((dayName, idx) => (
+                    <button key={idx} type="button" onClick={() => toggleWeekDay(idx)}
+                      style={{
+                        padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db',
+                        background: agendaForm.weekDays.includes(idx) ? '#2563eb' : 'transparent',
+                        color: agendaForm.weekDays.includes(idx) ? '#fff' : 'inherit', cursor: 'pointer', fontWeight: '600'
+                      }}
+                    >
+                      {dayName}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{display:'flex', gap:'10px'}}>
+                  <label style={{flex:1}}>Início
+                    <input type="time" required value={agendaForm.timeStart} onChange={e => setAgendaForm({...agendaForm, timeStart: e.target.value})} />
+                  </label>
+                  <label style={{flex:1}}>Fim
+                    <input type="time" required value={agendaForm.timeEnd} onChange={e => setAgendaForm({...agendaForm, timeEnd: e.target.value})} />
+                  </label>
+                </div>
+
+                <div style={{display:'flex', gap:'10px'}}>
+                  <label style={{flex:1}}>Data Inicial
+                    <input type="date" required value={agendaForm.startDate} onChange={e => setAgendaForm({...agendaForm, startDate: e.target.value})} />
+                  </label>
+                  <label style={{flex:1}}>Data Final
+                    <input type="date" required value={agendaForm.endDate} onChange={e => setAgendaForm({...agendaForm, endDate: e.target.value})} />
+                  </label>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="ghost" onClick={() => setClassModalOpen(false)}>Cancelar</button>
+                  <button type="submit" style={{ background: '#2563eb', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
+                    Gerar Agenda
+                  </button>
+                </div>
               </form>
             </Modal>
           </div>
         )}
 
-        {/* FINANCEIRO (COM MODAL E TABELA NOVA) */}
+        {/* FINANCEIRO */}
         {section === "financial" && (
           <div className="students-main">
             <header className="hub-header">
                <h1>Financeiro</h1>
                <button className="ghost" onClick={() => setFinanceModalOpen(true)}>+ Nova Transação</button>
             </header>
-
             <div className="card table-container">
                <table className="data-table">
                   <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Descrição</th>
-                      <th>Tipo</th>
-                      <th>Valor</th>
-                    </tr>
+                    <tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr>
                   </thead>
                   <tbody>
                     {financialRecords.map(rec => (
                       <tr key={rec.id}>
                          <td>{new Date(rec.date).toLocaleDateString()}</td>
                          <td>{rec.description}</td>
-                         <td>
-                            <span className={`pill ${rec.type === 'INCOME' ? 'success' : 'danger'}`}>
-                               {rec.type === 'INCOME' ? 'Entrada' : 'Saída'}
-                            </span>
-                         </td>
-                         <td style={{fontWeight: 'bold', color: rec.type === 'INCOME' ? '#16a34a' : '#dc2626'}}>
-                            R$ {Number(rec.amount).toFixed(2)}
-                         </td>
+                         <td><span className={`pill ${rec.type === 'INCOME' ? 'success' : 'danger'}`}>{rec.type === 'INCOME' ? 'Entrada' : 'Saída'}</span></td>
+                         <td style={{fontWeight: 'bold', color: rec.type === 'INCOME' ? '#16a34a' : '#dc2626'}}>R$ {Number(rec.amount).toFixed(2)}</td>
                       </tr>
                     ))}
-                    {financialRecords.length === 0 && <tr><td colSpan={4} style={{textAlign: 'center', padding: '2rem'}}>Nenhum registro.</td></tr>}
                   </tbody>
                </table>
             </div>
-
-            {/* MODAL FINANCEIRO */}
             <Modal isOpen={isFinanceModalOpen} onClose={() => setFinanceModalOpen(false)} title="Nova Movimentação">
                <form onSubmit={handleCreateFinance} className="form-grid" style={{gridTemplateColumns: '1fr'}}>
-                  <label>Descrição
-                     <input required placeholder="Ex: Mensalidade João" value={newFinanceData.description} onChange={e => setNewFinanceData({...newFinanceData, description: e.target.value})} />
-                  </label>
-                  <label>Valor (R$)
-                     <input required type="number" step="0.01" placeholder="0.00" value={newFinanceData.amount} onChange={e => setNewFinanceData({...newFinanceData, amount: e.target.value})} />
-                  </label>
+                  <label>Descrição<input required placeholder="Ex: Mensalidade João" value={newFinanceData.description} onChange={e => setNewFinanceData({...newFinanceData, description: e.target.value})} /></label>
+                  <label>Valor (R$)<input required type="number" step="0.01" value={newFinanceData.amount} onChange={e => setNewFinanceData({...newFinanceData, amount: e.target.value})} /></label>
                   <label>Tipo
                      <select value={newFinanceData.type} onChange={e => setNewFinanceData({...newFinanceData, type: e.target.value as any})}>
-                        <option value="INCOME">Entrada (Receita)</option>
-                        <option value="EXPENSE">Saída (Despesa)</option>
+                        <option value="INCOME">Entrada</option>
+                        <option value="EXPENSE">Saída</option>
                      </select>
                   </label>
                   <div className="modal-actions">
                    <button type="button" className="ghost" onClick={() => setFinanceModalOpen(false)}>Cancelar</button>
-                   <button type="submit" style={{background: '#10b981', color:'white', padding:'0.5rem 1rem', borderRadius:'6px', border:'none', cursor:'pointer'}}>Registrar</button>
+                   <button type="submit" style={{background: '#10b981', color:'white', padding:'0.5rem 1rem', borderRadius:'6px', border:'none', cursor:'pointer'}}>Salvar</button>
                  </div>
                </form>
             </Modal>
@@ -382,7 +407,6 @@ export function DashboardPage() {
             <div className="toggle-row">
               <div>
                 <div className="label-strong">Ativar modo Escuro</div>
-                <div className="label-muted">Alterna o tema do dashboard</div>
               </div>
               <button type="button" className={`toggle ${darkMode ? "on" : "off"}`} onClick={() => setDarkMode((v) => !v)} aria-pressed={darkMode}>
                 <span className="thumb" />
@@ -390,7 +414,6 @@ export function DashboardPage() {
             </div>
           </div>
         )}
-
       </section>
     </div>
   );

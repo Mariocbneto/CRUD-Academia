@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -36,15 +33,16 @@ model Post {
 }
 
 model Comment {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   content   String
   postId    Int
   userId    Int
-  post      Post      @relation(fields: [postId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 
 enum PlanType {
   MENSAL
@@ -63,7 +61,7 @@ model Student {
   startDate DateTime          @default(now())
   endDate   DateTime
   photo     String?
-  payments  FinancialRecord[] // <--- ADICIONE ISSO
+  payments  FinancialRecord[]
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 }
@@ -88,23 +86,28 @@ model Teacher {
   phone     String
   email     String
   classType ClassType
-  classes   GymClass[]        // <--- ADICIONE ISSO
-  payments  FinancialRecord[] // <--- ADICIONE ISSO
+  classes   GymClass[]
+  payments  FinancialRecord[]
   photo     String?
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 }
-
 model GymClass {
-  id          Int       @id @default(autoincrement())
-  name        String    // Ex: "Yoga Manhã"
-  dayOfWeek   Int       // 0=Domingo, 1=Segunda... 
-  timeStart   String    // "08:00"
-  timeEnd     String    // "09:00"
-  teacherId   Int
-  teacher     Teacher   @relation(fields: [teacherId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String   // Ex: "Musculação Manhã" ou "Yoga Terça"
+  
+  date      DateTime 
+  
+  timeStart String   // "08:00"
+  timeEnd   String   // "12:00"
+  
+  teacherId Int
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  
+  groupId   String?  
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum TransactionType {
@@ -115,13 +118,16 @@ enum TransactionType {
 model FinancialRecord {
   id          Int             @id @default(autoincrement())
   type        TransactionType
-  amount      Float           // Use Decimal em produção, mas Float serve aqui
+  amount      Float           // Decimal seria ideal, mas Float funciona
   description String
   date        DateTime        @default(now())
+  
   studentId   Int?
   student     Student?        @relation(fields: [studentId], references: [id])
+  
   teacherId   Int?
   teacher     Teacher?        @relation(fields: [teacherId], references: [id])
+  
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 }

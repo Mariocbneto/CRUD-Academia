@@ -1,14 +1,14 @@
 import { api } from "../lib/api";
 import type { GymClass } from "../types/gymClass";
 
-export async function getClasses(): Promise<GymClass[]> {
-  const { data } = await api.get("/classes");
+export async function getClasses(start?: string, end?: string): Promise<GymClass[]> {
+  const params = { start, end };
+  const { data } = await api.get<GymClass[]>("/classes", { params });
   return data;
 }
 
-export async function createClass(payload: any): Promise<GymClass> {
-  const { data } = await api.post("/classes", payload);
-  return data;
+export async function generateClasses(payload: any): Promise<void> {
+  await api.post("/classes/generate", payload);
 }
 
 export async function deleteClass(id: number): Promise<void> {

@@ -138,7 +138,7 @@ section h1 {
 .ghost {
   background: transparent;
   border: 1px solid #4b5563;
-  color: #181c24;
+  color: rgb(249, 251, 255);
   padding: 0.35rem 0.75rem;
   border-radius: 6px;
   cursor: pointer;
@@ -694,7 +694,7 @@ body.dark {
 }
 
 .dark .ghost:hover {
-  background-color: #374151;
+  background-color: #dfe4ecff;
 }
 
 
